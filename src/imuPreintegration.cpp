@@ -392,7 +392,7 @@ public:
             double imuTime = stamp2Sec(thisImu->header.stamp);
             if (imuTime < currentCorrectionTime - delta_t)
             {
-                double dt = (lastImuT_opt < 0) ? (1.0 / 500.0) : (imuTime - lastImuT_opt);
+                double dt = (lastImuT_opt < 0 || imuTime - lastImuT_opt <= 0) ? (1.0 / 500.0) : (imuTime - lastImuT_opt);
                 imuIntegratorOpt_->integrateMeasurement(
                         gtsam::Vector3(thisImu->linear_acceleration.x, thisImu->linear_acceleration.y, thisImu->linear_acceleration.z),
                         gtsam::Vector3(thisImu->angular_velocity.x,    thisImu->angular_velocity.y,    thisImu->angular_velocity.z), dt);
@@ -440,7 +440,7 @@ public:
         }
 
 
-        // 2. after optiization, re-propagate imu odometry preintegration
+        // 2. after optimization, re-propagate imu odometry preintegration
         prevStateOdom = prevState_;
         prevBiasOdom  = prevBias_;
         // first pop imu message older than current correction data
@@ -460,7 +460,7 @@ public:
             {
                 sensor_msgs::msg::Imu *thisImu = &imuQueImu[i];
                 double imuTime = stamp2Sec(thisImu->header.stamp);
-                double dt = (lastImuQT < 0) ? (1.0 / 500.0) :(imuTime - lastImuQT);
+                double dt = (lastImuQT < 0 || imuTime - lastImuQT <= 0) ? (1.0 / 500.0) : (imuTime - lastImuQT);
 
                 imuIntegratorImu_->integrateMeasurement(gtsam::Vector3(thisImu->linear_acceleration.x, thisImu->linear_acceleration.y, thisImu->linear_acceleration.z),
                                                         gtsam::Vector3(thisImu->angular_velocity.x,    thisImu->angular_velocity.y,    thisImu->angular_velocity.z), dt);
@@ -505,12 +505,16 @@ public:
             return;
 
         double imuTime = stamp2Sec(thisImu.header.stamp);
-        double dt = (lastImuT_imu < 0) ? (1.0 / 500.0) : (imuTime - lastImuT_imu);
+        double dt = (lastImuT_imu < 0 || imuTime - lastImuT_imu <= 0) ? (1.0 / 500.0) : (imuTime - lastImuT_imu);
         lastImuT_imu = imuTime;
 
         // integrate this single imu message
-        imuIntegratorImu_->integrateMeasurement(gtsam::Vector3(thisImu.linear_acceleration.x, thisImu.linear_acceleration.y, thisImu.linear_acceleration.z),
-                                                gtsam::Vector3(thisImu.angular_velocity.x,    thisImu.angular_velocity.y,    thisImu.angular_velocity.z), dt);
+        imuIntegratorImu_->integrateMeasurement(gtsam::Vector3(thisImu.linear_acceleration.x,
+                                                               thisImu.linear_acceleration.y,
+                                                               thisImu.linear_acceleration.z),
+                                                gtsam::Vector3(thisImu.angular_velocity.x,
+                                                               thisImu.angular_velocity.y,
+                                                               thisImu.angular_velocity.z), dt);
 
         // predict odometry
         gtsam::NavState currentState = imuIntegratorImu_->predict(prevStateOdom, prevBiasOdom);
@@ -521,7 +525,7 @@ public:
         odometry.header.frame_id = odometryFrame;
         odometry.child_frame_id = "odom_imu";
 
-        // transform imu pose to ldiar
+        // transform imu pose to lidar
         gtsam::Pose3 imuPose = gtsam::Pose3(currentState.quaternion(), currentState.position());
         gtsam::Pose3 lidarPose = imuPose.compose(imu2Lidar);
 
