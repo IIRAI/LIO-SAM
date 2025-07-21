@@ -91,13 +91,12 @@ public:
         // get latest odometry (at current IMU stamp)
         if (lidarOdomTime == -1)
             return;
-        while (!imuOdomQueue.empty())
+        // remove IMU odometry messages older than or equal to the latest lidar odometry time
+        while (!imuOdomQueue.empty() && stamp2Sec(imuOdomQueue.front().header.stamp) <= lidarOdomTime)
         {
-            if (stamp2Sec(imuOdomQueue.front().header.stamp) <= lidarOdomTime)
-                imuOdomQueue.pop_front();
-            else
-                break;
+            imuOdomQueue.pop_front();
         }
+
         Eigen::Isometry3d imuOdomIsometryFront = odom2isometry(imuOdomQueue.front());
         Eigen::Isometry3d imuOdomIsometryBack = odom2isometry(imuOdomQueue.back());
         Eigen::Isometry3d imuOdomIsometryIncre = imuOdomIsometryFront.inverse() * imuOdomIsometryBack;
@@ -114,7 +113,15 @@ public:
         imuOdometry.pose.pose.orientation = t.transform.rotation;
         pubImuOdometry->publish(imuOdometry);
 
-        // publish tf
+        if (publishOdomToBaseTF)
+            publishOdomToBaseTf(tCur, odomMsg);
+
+        publishImuPath(imuOdometry);
+    }
+
+    void publishOdomToBaseTf(tf2::Stamped<tf2::Transform> &tCur,
+                             const nav_msgs::msg::Odometry::SharedPtr odomMsg)
+    {
         if(lidarFrame != baselinkFrame)
         {
             try
@@ -130,15 +137,10 @@ public:
                 tCur * lidar2Baselink, tf2_ros::fromMsg(odomMsg->header.stamp), odometryFrame);
             tCur = tb;
         }
-        if (publishOdomToBaseTF)
-        {
-            geometry_msgs::msg::TransformStamped ts;
-            tf2::convert(tCur, ts);
-            ts.child_frame_id = baselinkFrame;
-            tfBroadcaster->sendTransform(ts);
-        }
-
-        publishImuPath(imuOdometry);
+        geometry_msgs::msg::TransformStamped ts;
+        tf2::convert(tCur, ts);
+        ts.child_frame_id = baselinkFrame;
+        tfBroadcaster->sendTransform(ts);
     }
 
     void publishImuPath(const nav_msgs::msg::Odometry &imuOdometry)
