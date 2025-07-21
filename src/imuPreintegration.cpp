@@ -34,9 +34,9 @@ public:
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pubImuOdometry;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubImuPath;
 
-    Eigen::Isometry3d lidarOdomAffine;
-    Eigen::Isometry3d imuOdomAffineFront;
-    Eigen::Isometry3d imuOdomAffineBack;
+    Eigen::Isometry3d lidarOdomIsometry;
+    Eigen::Isometry3d imuOdomIsometryFront;
+    Eigen::Isometry3d imuOdomIsometryBack;
 
     std::shared_ptr<tf2_ros::Buffer> tfBuffer;
     std::shared_ptr<tf2_ros::TransformBroadcaster> tfBroadcaster;
@@ -76,7 +76,7 @@ public:
         tfBroadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(this);
     }
 
-    Eigen::Isometry3d odom2affine(nav_msgs::msg::Odometry odom)
+    Eigen::Isometry3d odom2isometry(nav_msgs::msg::Odometry odom)
     {
         tf2::Transform t;
         tf2::fromMsg(odom.pose.pose, t);
@@ -87,7 +87,7 @@ public:
     {
         std::lock_guard<std::mutex> lock(mtx);
 
-        lidarOdomAffine = odom2affine(*odomMsg);
+        lidarOdomIsometry = odom2isometry(*odomMsg);
 
         lidarOdomTime = stamp2Sec(odomMsg->header.stamp);
     }
@@ -108,10 +108,10 @@ public:
             else
                 break;
         }
-        Eigen::Isometry3d imuOdomAffineFront = odom2affine(imuOdomQueue.front());
-        Eigen::Isometry3d imuOdomAffineBack = odom2affine(imuOdomQueue.back());
-        Eigen::Isometry3d imuOdomAffineIncre = imuOdomAffineFront.inverse() * imuOdomAffineBack;
-        Eigen::Isometry3d imuOdomAffineLast = lidarOdomAffine * imuOdomAffineIncre;
+        Eigen::Isometry3d imuOdomIsometryFront = odom2isometry(imuOdomQueue.front());
+        Eigen::Isometry3d imuOdomIsometryBack = odom2isometry(imuOdomQueue.back());
+        Eigen::Isometry3d imuOdomAffineIncre = imuOdomIsometryFront.inverse() * imuOdomIsometryBack;
+        Eigen::Isometry3d imuOdomAffineLast = lidarOdomIsometry * imuOdomAffineIncre;
         auto t = tf2::eigenToTransform(imuOdomAffineLast);
         tf2::Stamped<tf2::Transform> tCur;
         tf2::convert(t, tCur);
@@ -262,7 +262,7 @@ public:
         noiseModelBetweenBias = (gtsam::Vector(6) << imuAccBiasN, imuAccBiasN, imuAccBiasN, imuGyrBiasN, imuGyrBiasN, imuGyrBiasN).finished();
         
         imuIntegratorImu_ = new gtsam::PreintegratedImuMeasurements(p, prior_imu_bias); // setting up the IMU integration for IMU message thread
-        imuIntegratorOpt_ = new gtsam::PreintegratedImuMeasurements(p, prior_imu_bias); // setting up the IMU integration for optimization        
+        imuIntegratorOpt_ = new gtsam::PreintegratedImuMeasurements(p, prior_imu_bias); // setting up the IMU integration for optimization
     }
 
     void resetOptimization()
@@ -523,7 +523,7 @@ public:
         auto odometry = nav_msgs::msg::Odometry();
         odometry.header.stamp = thisImu.header.stamp;
         odometry.header.frame_id = odometryFrame;
-        odometry.child_frame_id = "odom_imu";
+        odometry.child_frame_id = lidarFrame;
 
         // transform imu pose to lidar
         gtsam::Pose3 imuPose = gtsam::Pose3(currentState.quaternion(), currentState.position());

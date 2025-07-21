@@ -325,10 +325,7 @@ public:
     {
         sensor_msgs::msg::Imu imu_out = imu_in;
         // rotate acceleration
-        // Eigen::Vector3d acc(imu_in.linear_acceleration.x, imu_in.linear_acceleration.y, imu_in.linear_acceleration.z);
-        Eigen::Vector3d acc(imu_in.linear_acceleration.x * imuGravity,
-                            imu_in.linear_acceleration.y * imuGravity,
-                            imu_in.linear_acceleration.z * imuGravity);
+        Eigen::Vector3d acc(imu_in.linear_acceleration.x, imu_in.linear_acceleration.y, imu_in.linear_acceleration.z);
         acc = extRot * acc;
         imu_out.linear_acceleration.x = acc.x();
         imu_out.linear_acceleration.y = acc.y();
