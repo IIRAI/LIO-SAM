@@ -1,3 +1,23 @@
+/**
+ * @file featureExtraction.h
+ * @brief FeatureExtraction class, which handles feature extraction from point clouds.
+ * 
+ * The feature extraction step follows the image projection step and is required by the map
+ * optimization step.
+ * 
+ * Subscribe to:
+ *  - "lio_sam/deskew/cloud_info": `CloudInfo` message containing point cloud data published from
+ *    imageProjection.
+ * 
+ * Main function:
+ *  - Extract edge and planar feature from a point cloud
+ * 
+ * Publish:
+ *  - "lio_sam/feature/cloud_info": `CloudInfo` message containing new point cloud data
+ *  - "lio_sam/feature/cloud_corner": `PointCloud2` message of the corner feature extracted
+ *  - "lio_sam/feature/cloud_surface": `PointCloud2` message of the surface feature extracted
+ */
+
 #include "lio_sam/utility.hpp"
 #include "lio_sam/msg/cloud_info.hpp"
 

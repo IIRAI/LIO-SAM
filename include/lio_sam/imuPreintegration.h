@@ -1,3 +1,23 @@
+/**
+ * @file imuPreintegration.h
+ * @brief imuPreintegration class, which handles the imu integration for having a first guess to
+ * compute the movement of the lidar.
+ * 
+ * The imu preintegration step follows the map optimization step and is required by the image
+ * projection step.
+ * 
+ * Subscribe to:
+ *  - imu data
+ *  - lidar odometry
+ * 
+ * Main function:
+ *  - graph optimization
+ *  - estimate imu bias
+ * 
+ * Publish:
+ *  - imu odometry (incremental)
+ */
+
 #ifndef IMU_PREINTEGRATION_H_
 #define IMU_PREINTEGRATION_H_
 

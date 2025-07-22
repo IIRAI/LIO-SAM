@@ -1,3 +1,22 @@
+/**
+ * @file transformFusion.h
+ * @brief transformFusion class, which processes lio-sam data to output topic and tf.
+ * 
+ * The transform fusion step requires outputs from imu preintegration and map optimization steps.
+ * 
+ * Subscribe to:
+ *  - imu odometry (incremental)
+ *  - lidar odometry
+ * 
+ * Main function:
+ *  - fuse lidar odometry with imu odometry
+ *  - compute tf to base-link
+ * 
+ * Publish:
+ *  - imu odometry
+ *  - tf to base-link
+ */
+
 #ifndef TRANSFORM_FUSION_H_
 #define TRANSFORM_FUSION_H_
 

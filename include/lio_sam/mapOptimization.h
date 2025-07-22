@@ -1,3 +1,23 @@
+/**
+ * @file mapOptimization.h
+ * @brief mapOptimization class, which handles the lidar odometry optimization.
+ * 
+ * The map optimization step follows the feature extraction step and is required by the imu
+ * preintegration step.
+ * 
+ * Subscribe to:
+ *  - cloud_info message
+ *  - gps
+ * 
+ * Main function:
+ *  - register point cloud
+ *  - get lidar odometry
+ *  - graph optimization
+ * 
+ * Publish:
+ *  - lidar odometry
+ */
+
 #include "lio_sam/utility.hpp"
 #include "lio_sam/msg/cloud_info.hpp"
 #include "lio_sam/srv/save_map.hpp"

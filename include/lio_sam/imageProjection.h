@@ -1,3 +1,24 @@
+/**
+ * @file imageProjection.h
+ * @brief imageProjection class, which handles the initial processing of point clouds.
+ * 
+ * The image projection step follows the imu preintegration step and is required by the feature
+ * extraction step.
+ * 
+ * Subscribe to:
+ *  - point cloud
+ *  - imu data
+ *  - odometry data
+ * 
+ * Main function:
+ *  - get transformation guess
+ *  - organize point cloud
+ *  - deskew point cloud
+ * 
+ * Publish:
+ *  - "lio_sam/deskew/cloud_info": `CloudInfo` message containing point cloud data
+ */
+
 #include "lio_sam/utility.hpp"
 #include "lio_sam/msg/cloud_info.hpp"
 
