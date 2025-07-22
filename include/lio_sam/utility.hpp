@@ -1,4 +1,4 @@
-#pragma once
+// #pragma once
 #ifndef _UTILITY_LIDAR_ODOMETRY_H_
 #define _UTILITY_LIDAR_ODOMETRY_H_
 
@@ -355,7 +355,7 @@ public:
 };
 
 
-sensor_msgs::msg::PointCloud2 publishCloud(rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr thisPub, pcl::PointCloud<PointType>::Ptr thisCloud, rclcpp::Time thisStamp, std::string thisFrame)
+inline sensor_msgs::msg::PointCloud2 publishCloud(rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr thisPub, pcl::PointCloud<PointType>::Ptr thisCloud, rclcpp::Time thisStamp, std::string thisFrame)
 {
     sensor_msgs::msg::PointCloud2 tempCloud;
     pcl::toROSMsg(*thisCloud, tempCloud);
@@ -367,14 +367,14 @@ sensor_msgs::msg::PointCloud2 publishCloud(rclcpp::Publisher<sensor_msgs::msg::P
 }
 
 template<typename T>
-double stamp2Sec(const T& stamp)
+inline double stamp2Sec(const T& stamp)
 {
     return rclcpp::Time(stamp).seconds();
 }
 
 
 template<typename T>
-void imuAngular2rosAngular(sensor_msgs::msg::Imu *thisImuMsg, T *angular_x, T *angular_y, T *angular_z)
+inline void imuAngular2rosAngular(sensor_msgs::msg::Imu *thisImuMsg, T *angular_x, T *angular_y, T *angular_z)
 {
     *angular_x = thisImuMsg->angular_velocity.x;
     *angular_y = thisImuMsg->angular_velocity.y;
@@ -383,7 +383,7 @@ void imuAngular2rosAngular(sensor_msgs::msg::Imu *thisImuMsg, T *angular_x, T *a
 
 
 template<typename T>
-void imuAccel2rosAccel(sensor_msgs::msg::Imu *thisImuMsg, T *acc_x, T *acc_y, T *acc_z)
+inline void imuAccel2rosAccel(sensor_msgs::msg::Imu *thisImuMsg, T *acc_x, T *acc_y, T *acc_z)
 {
     *acc_x = thisImuMsg->linear_acceleration.x;
     *acc_y = thisImuMsg->linear_acceleration.y;
@@ -392,7 +392,7 @@ void imuAccel2rosAccel(sensor_msgs::msg::Imu *thisImuMsg, T *acc_x, T *acc_y, T 
 
 
 template<typename T>
-void imuRPY2rosRPY(sensor_msgs::msg::Imu *thisImuMsg, T *rosRoll, T *rosPitch, T *rosYaw)
+inline void imuRPY2rosRPY(sensor_msgs::msg::Imu *thisImuMsg, T *rosRoll, T *rosPitch, T *rosYaw)
 {
     double imuRoll, imuPitch, imuYaw;
     tf2::Quaternion orientation;
@@ -405,18 +405,18 @@ void imuRPY2rosRPY(sensor_msgs::msg::Imu *thisImuMsg, T *rosRoll, T *rosPitch, T
 }
 
 
-float pointDistance(PointType p)
+inline float pointDistance(PointType p)
 {
     return sqrt(p.x*p.x + p.y*p.y + p.z*p.z);
 }
 
 
-float pointDistance(PointType p1, PointType p2)
+inline float pointDistance(PointType p1, PointType p2)
 {
     return sqrt((p1.x-p2.x)*(p1.x-p2.x) + (p1.y-p2.y)*(p1.y-p2.y) + (p1.z-p2.z)*(p1.z-p2.z));
 }
 
-rmw_qos_profile_t qos_profile{
+inline rmw_qos_profile_t qos_profile{
     RMW_QOS_POLICY_HISTORY_KEEP_LAST,
     1,
     RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
@@ -428,14 +428,14 @@ rmw_qos_profile_t qos_profile{
     false
 };
 
-auto qos = rclcpp::QoS(
+inline auto qos = rclcpp::QoS(
     rclcpp::QoSInitialization(
         qos_profile.history,
         qos_profile.depth
     ),
     qos_profile);
 
-rmw_qos_profile_t qos_profile_imu{
+inline rmw_qos_profile_t qos_profile_imu{
     RMW_QOS_POLICY_HISTORY_KEEP_LAST,
     2000,
     RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
@@ -447,14 +447,14 @@ rmw_qos_profile_t qos_profile_imu{
     false
 };
 
-auto qos_imu = rclcpp::QoS(
+inline auto qos_imu = rclcpp::QoS(
     rclcpp::QoSInitialization(
         qos_profile_imu.history,
         qos_profile_imu.depth
     ),
     qos_profile_imu);
 
-rmw_qos_profile_t qos_profile_lidar{
+inline rmw_qos_profile_t qos_profile_lidar{
     RMW_QOS_POLICY_HISTORY_KEEP_LAST,
     5,
     RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
@@ -466,11 +466,11 @@ rmw_qos_profile_t qos_profile_lidar{
     false
 };
 
-auto qos_lidar = rclcpp::QoS(
+inline auto qos_lidar = rclcpp::QoS(
     rclcpp::QoSInitialization(
         qos_profile_lidar.history,
         qos_profile_lidar.depth
     ),
     qos_profile_lidar);
 
-#endif
+#endif  // _UTILITY_LIDAR_ODOMETRY_H_
