@@ -18,6 +18,9 @@
  *  - lidar odometry
  */
 
+#ifndef MAP_OPTIMIZATION_H_
+#define MAP_OPTIMIZATION_H_
+
 #include "lio_sam/utility.hpp"
 #include "lio_sam/msg/cloud_info.hpp"
 #include "lio_sam/srv/save_map.hpp"
@@ -252,3 +255,5 @@ public:
 
     void publishFrames();
 };
+
+#endif  // MAP_OPTIMIZATION_H_

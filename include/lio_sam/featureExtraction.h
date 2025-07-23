@@ -18,6 +18,9 @@
  *  - "lio_sam/feature/cloud_surface": `PointCloud2` message of the surface feature extracted
  */
 
+#ifndef FEATURE_EXTRACTION_H_
+#define FEATURE_EXTRACTION_H_
+
 #include "lio_sam/utility.hpp"
 #include "lio_sam/msg/cloud_info.hpp"
 
@@ -73,3 +76,5 @@ public:
 
     void publishFeatureCloud();
 };
+
+#endif  // FEATURE_EXTRACTION_H_

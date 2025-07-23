@@ -19,6 +19,9 @@
  *  - "lio_sam/deskew/cloud_info": `CloudInfo` message containing point cloud data
  */
 
+#ifndef IMAGE_PROJECTION_H_
+#define IMAGE_PROJECTION_H_
+
 #include "lio_sam/utility.hpp"
 #include "lio_sam/msg/cloud_info.hpp"
 
@@ -147,3 +150,5 @@ public:
 
     void publishClouds();
 };
+
+#endif  // IMAGE_PROJECTION_H_
