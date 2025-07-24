@@ -145,6 +145,7 @@ public:
 
     std::mutex mtx;
     std::mutex mtxLoopInfo;
+    std::mutex mtxGps;
 
     bool isDegenerate = false;
     Eigen::Matrix<float, 6, 6> matP;

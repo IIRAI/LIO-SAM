@@ -184,6 +184,7 @@ void mapOptimization::laserCloudInfoHandler(const lio_sam::msg::CloudInfo::Share
 
 void mapOptimization::gpsHandler(const nav_msgs::msg::Odometry::SharedPtr gpsMsg)
 {
+    std::lock_guard<std::mutex> lock(mtxGps);
     gpsQueue.push_back(*gpsMsg);
 }
 
@@ -1225,6 +1226,8 @@ void mapOptimization::addOdomFactor()
 
 void mapOptimization::addGPSFactor()
 {
+    std::lock_guard<std::mutex> lock(mtxGps);
+
     if (gpsQueue.empty())
         return;
 
