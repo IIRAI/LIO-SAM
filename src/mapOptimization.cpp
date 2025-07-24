@@ -14,9 +14,12 @@ mapOptimization::mapOptimization(const rclcpp::NodeOptions & options) : ParamSer
     parameters.relinearizeSkip = 1;
     isam = new ISAM2(parameters);
 
-    pubKeyPoses = create_publisher<sensor_msgs::msg::PointCloud2>("lio_sam/mapping/trajectory", 1);
-    pubLaserCloudSurround = create_publisher<sensor_msgs::msg::PointCloud2>("lio_sam/mapping/map_global", 1);
-    pubLaserOdometryGlobal = create_publisher<nav_msgs::msg::Odometry>("lio_sam/mapping/odometry", qos);
+    pubKeyPoses = create_publisher<sensor_msgs::msg::PointCloud2>(
+        "lio_sam/mapping/trajectory", 1);
+    pubLaserCloudSurround = create_publisher<sensor_msgs::msg::PointCloud2>(
+        "lio_sam/mapping/map_global", 1);
+    pubLaserOdometryGlobal = create_publisher<nav_msgs::msg::Odometry>(
+        "lio_sam/mapping/odometry", qos);
     pubLaserOdometryIncremental = create_publisher<nav_msgs::msg::Odometry>(
         "lio_sam/mapping/odometry_incremental", qos);
     pubPath = create_publisher<nav_msgs::msg::Path>("lio_sam/mapping/path", 1);
@@ -168,21 +171,13 @@ void mapOptimization::laserCloudInfoHandler(const lio_sam::msg::CloudInfo::Share
     if (timeLaserInfoCur - timeLastProcessing >= mappingProcessInterval)
     {
         timeLastProcessing = timeLaserInfoCur;
-
         updateInitialGuess();
-
         extractSurroundingKeyFrames();
-
         downsampleCurrentScan();
-
         scan2MapOptimization();
-
         saveKeyFramesAndFactor();
-
         correctPoses();
-
         publishOdometry();
-
         publishFrames();
     }
 }
@@ -777,8 +772,8 @@ void mapOptimization::extractCloud(pcl::PointCloud<PointType>::Ptr cloudToExtrac
 void mapOptimization::extractSurroundingKeyFrames()
 {
     if (cloudKeyPoses3D->points.empty() == true)
-        return; 
-    
+        return;
+
     // if (loopClosureEnableFlag == true)
     // {
     //     extractForLoopClosure();
@@ -1138,12 +1133,13 @@ void mapOptimization::scan2MapOptimization()
             combineOptimizationCoeffs();
 
             if (LMOptimization(iterCount) == true)
-                break;              
+                break;
         }
 
         transformUpdate();
     } else {
-        RCLCPP_WARN(get_logger(), "Not enough features! Only %d edge and %d planar features available.", laserCloudCornerLastDSNum, laserCloudSurfLastDSNum);
+        RCLCPP_WARN(get_logger(), "Not enough features! Only %d edge and %d planar features available.",
+        laserCloudCornerLastDSNum, laserCloudSurfLastDSNum);
     }
 }
 
@@ -1181,12 +1177,7 @@ void mapOptimization::transformUpdate()
 
 float mapOptimization::constraintTransformation(float value, float limit)
 {
-    if (value < -limit)
-        value = -limit;
-    if (value > limit)
-        value = limit;
-
-    return value;
+    return std::clamp(value, -limit, limit);
 }
 
 bool mapOptimization::saveFrame()
@@ -1336,13 +1327,8 @@ void mapOptimization::saveKeyFramesAndFactor()
     if (saveFrame() == false)
         return;
 
-    // odom factor
     addOdomFactor();
-
-    // gps factor
     addGPSFactor();
-
-    // loop factor
     addLoopFactor();
 
     // cout << "****************************************************" << endl;
@@ -1352,13 +1338,12 @@ void mapOptimization::saveKeyFramesAndFactor()
     isam->update(gtSAMgraph, initialEstimate);
     isam->update();
 
-    if (aLoopIsClosed == true)
+    if (aLoopIsClosed)
     {
-        isam->update();
-        isam->update();
-        isam->update();
-        isam->update();
-        isam->update();
+        // call update() many times to help with convergence, this is a workaround and must/can be improved
+        for (int i = 0; i < 5; ++i) {
+            isam->update();
+        }
     }
 
     gtSAMgraph.resize(0);
@@ -1478,6 +1463,13 @@ void mapOptimization::publishOdometry()
     laserOdometryROS.pose.pose.position.x = transformTobeMapped[3];
     laserOdometryROS.pose.pose.position.y = transformTobeMapped[4];
     laserOdometryROS.pose.pose.position.z = transformTobeMapped[5];
+
+    for (int row = 0; row < 6; ++row) {
+        for (int col = 0; col < 6; ++col) {
+            laserOdometryROS.pose.covariance[row * 6 + col] = poseCovariance(row, col);
+        }
+    }
+
     tf2::Quaternion quat_tf;
     quat_tf.setRPY(transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
     geometry_msgs::msg::Quaternion quat_msg;
