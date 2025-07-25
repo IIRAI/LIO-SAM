@@ -208,26 +208,12 @@ void mapOptimization::gpsHandler(const nav_msgs::msg::Odometry::SharedPtr gpsMsg
     tf2::Transform gps2Lidar;
     tf2::fromMsg(ts_gps2Lidar.transform, gps2Lidar);
 
-    tf2::Transform  tLidar = tGps * gps2Lidar;
+    tf2::Transform tLidar = tGps * gps2Lidar;
 
     gpsMsgTransformed.pose.pose.position.x = tLidar.getOrigin().x();
     gpsMsgTransformed.pose.pose.position.y = tLidar.getOrigin().y();
     gpsMsgTransformed.pose.pose.position.z = tLidar.getOrigin().z();
     gpsMsgTransformed.pose.pose.orientation = tf2::toMsg(tLidar.getRotation());
-
-    // double roll, pitch, yaw;
-    // tf2::Matrix3x3(tGps.getRotation()).getRPY(roll, pitch, yaw);
-    // RCLCPP_INFO(get_logger(), "GPS RPY: roll=%.3f, pitch=%.3f, yaw=%.3f", roll*180.0/3.141592, pitch*180.0/3.141592, yaw*180.0/3.141592);
-
-    // RCLCPP_INFO(get_logger(), "gnss:  p=(%.3f, %.3f, %.3f)",
-    //     tGps.getOrigin().x(),
-    //     tGps.getOrigin().y(),
-    //     tGps.getOrigin().z());
-
-    // RCLCPP_INFO(get_logger(), "lidar: p=(%.3f, %.3f, %.3f)",
-    //     tLidar.getOrigin().x(),
-    //     tLidar.getOrigin().y(),
-    //     tLidar.getOrigin().z());
 
     std::lock_guard<std::mutex> lock(mtxGps);
     gpsQueue.push_back(*gpsMsg);
