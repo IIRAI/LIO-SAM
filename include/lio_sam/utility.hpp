@@ -79,13 +79,14 @@ public:
     string lidarFrame;
     string baselinkFrame;
     string odometryFrame;
-    string mapFrame;
+    // string mapFrame;
 
     // GPS Settings
     bool useImuHeadingInitialization;
     bool useGpsElevation;
     float gpsCovThreshold;
-    float poseCovThreshold;
+    // float poseCovThreshold;
+    float minGpsMeasDistance;
 
     // Save pcd
     bool savePCD;
@@ -173,8 +174,8 @@ public:
         get_parameter("baselinkFrame", baselinkFrame);
         declare_parameter("odometryFrame", "odom");
         get_parameter("odometryFrame", odometryFrame);
-        declare_parameter("mapFrame", "map");
-        get_parameter("mapFrame", mapFrame);
+        // declare_parameter("mapFrame", "map");
+        // get_parameter("mapFrame", mapFrame);
 
         declare_parameter("useImuHeadingInitialization", false);
         get_parameter("useImuHeadingInitialization", useImuHeadingInitialization);
@@ -182,8 +183,10 @@ public:
         get_parameter("useGpsElevation", useGpsElevation);
         declare_parameter("gpsCovThreshold", 2.0);
         get_parameter("gpsCovThreshold", gpsCovThreshold);
-        declare_parameter("poseCovThreshold", 25.0);
-        get_parameter("poseCovThreshold", poseCovThreshold);
+        // declare_parameter("poseCovThreshold", 25.0);
+        // get_parameter("poseCovThreshold", poseCovThreshold);
+        declare_parameter("minGpsMeasDistance", 2.0);
+        get_parameter("minGpsMeasDistance", minGpsMeasDistance);
 
         declare_parameter("savePCD", false);
         get_parameter("savePCD", savePCD);

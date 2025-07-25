@@ -1322,7 +1322,7 @@ void mapOptimization::addGPSFactor()
 
         // Add GPS factor only if moved enough
         PointType curGPSPoint{gps_x, gps_y, gps_z};
-        if (pointDistance(curGPSPoint, lastGPSPoint) < 5.0)
+        if (pointDistance(curGPSPoint, lastGPSPoint) < minGpsMeasDistance)
             continue;
         lastGPSPoint = curGPSPoint;
 
