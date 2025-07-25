@@ -35,6 +35,11 @@ mapOptimization::mapOptimization(const rclcpp::NodeOptions & options) : ParamSer
         "lio_loop/loop_closure_detection", qos,
         std::bind(&mapOptimization::loopInfoHandler, this, std::placeholders::_1));
 
+    tf_buffer =
+      std::make_unique<tf2_ros::Buffer>(this->get_clock());
+    tf_listener =
+      std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
+
     auto saveMapService = [this](const std::shared_ptr<rmw_request_id_t> request_header, const std::shared_ptr<lio_sam::srv::SaveMap::Request> req, std::shared_ptr<lio_sam::srv::SaveMap::Response> res) -> void {
         (void)request_header;
         string saveMapDirectory;
@@ -184,6 +189,46 @@ void mapOptimization::laserCloudInfoHandler(const lio_sam::msg::CloudInfo::Share
 
 void mapOptimization::gpsHandler(const nav_msgs::msg::Odometry::SharedPtr gpsMsg)
 {
+    nav_msgs::msg::Odometry gpsMsgTransformed = *gpsMsg;
+
+    geometry_msgs::msg::TransformStamped ts_gps2Lidar;
+    try
+    {
+        ts_gps2Lidar = tf_buffer->lookupTransform(gpsMsg->child_frame_id, lidarFrame, rclcpp::Time(0));
+    }
+    catch (const tf2::TransformException &ex)
+    {
+        RCLCPP_WARN(get_logger(), "%s", ex.what());
+        return;
+    }
+
+    tf2::Transform tGps;
+    tf2::fromMsg(gpsMsg->pose.pose, tGps);
+
+    tf2::Transform gps2Lidar;
+    tf2::fromMsg(ts_gps2Lidar.transform, gps2Lidar);
+
+    tf2::Transform  tLidar = tGps * gps2Lidar;
+
+    gpsMsgTransformed.pose.pose.position.x = tLidar.getOrigin().x();
+    gpsMsgTransformed.pose.pose.position.y = tLidar.getOrigin().y();
+    gpsMsgTransformed.pose.pose.position.z = tLidar.getOrigin().z();
+    gpsMsgTransformed.pose.pose.orientation = tf2::toMsg(tLidar.getRotation());
+
+    // double roll, pitch, yaw;
+    // tf2::Matrix3x3(tGps.getRotation()).getRPY(roll, pitch, yaw);
+    // RCLCPP_INFO(get_logger(), "GPS RPY: roll=%.3f, pitch=%.3f, yaw=%.3f", roll*180.0/3.141592, pitch*180.0/3.141592, yaw*180.0/3.141592);
+
+    // RCLCPP_INFO(get_logger(), "gnss:  p=(%.3f, %.3f, %.3f)",
+    //     tGps.getOrigin().x(),
+    //     tGps.getOrigin().y(),
+    //     tGps.getOrigin().z());
+
+    // RCLCPP_INFO(get_logger(), "lidar: p=(%.3f, %.3f, %.3f)",
+    //     tLidar.getOrigin().x(),
+    //     tLidar.getOrigin().y(),
+    //     tLidar.getOrigin().z());
+
     std::lock_guard<std::mutex> lock(mtxGps);
     gpsQueue.push_back(*gpsMsg);
 }
@@ -1240,68 +1285,68 @@ void mapOptimization::addGPSFactor()
             return;
     }
 
+    //NOTE(ed): here there are two minor issues:
+    //    1. the covariance related to position should be (0,0) and (1,1)
+    //    2. if the system is slow and has many features, the covariance could be always under the
+    //       selected covariance (how to choose it is another question) and all GPS measurement
+    //       could be discarded.
     // pose covariance small, no need to correct
-    if (poseCovariance(3,3) < poseCovThreshold && poseCovariance(4,4) < poseCovThreshold)
-        return;
+    // if (poseCovariance(3,3) < poseCovThreshold && poseCovariance(4,4) < poseCovThreshold)
+    //     return;
 
     // last gps position
     static PointType lastGPSPoint;
 
+    // Process GPS messages within a valid time window and add factors if appropriate
     while (!gpsQueue.empty())
     {
-        if (stamp2Sec(gpsQueue.front().header.stamp) < timeLaserInfoCur - 0.2)
+        double gpsTime = stamp2Sec(gpsQueue.front().header.stamp);
+        // Remove outdated messages
+        if (gpsTime < timeLaserInfoCur - 0.2)
         {
-            // message too old
             gpsQueue.pop_front();
+            continue;
         }
-        else if (stamp2Sec(gpsQueue.front().header.stamp) > timeLaserInfoCur + 0.2)
-        {
-            // message too new
+        // Stop if message is too new
+        if (gpsTime > timeLaserInfoCur + 0.2)
             break;
-        }
-        else
+
+        nav_msgs::msg::Odometry thisGPS = gpsQueue.front();
+        gpsQueue.pop_front();
+
+        // Check GPS covariance
+        float noise_x = thisGPS.pose.covariance[0];
+        float noise_y = thisGPS.pose.covariance[7];
+        float noise_z = thisGPS.pose.covariance[14];
+        if (noise_x > gpsCovThreshold || noise_y > gpsCovThreshold)
+            continue;
+
+        float gps_x = thisGPS.pose.pose.position.x;
+        float gps_y = thisGPS.pose.pose.position.y;
+        float gps_z = thisGPS.pose.pose.position.z;
+        if (!useGpsElevation)
         {
-            nav_msgs::msg::Odometry thisGPS = gpsQueue.front();
-            gpsQueue.pop_front();
-
-            // GPS too noisy, skip
-            float noise_x = thisGPS.pose.covariance[0];
-            float noise_y = thisGPS.pose.covariance[7];
-            float noise_z = thisGPS.pose.covariance[14];
-            if (noise_x > gpsCovThreshold || noise_y > gpsCovThreshold)
-                continue;
-            float gps_x = thisGPS.pose.pose.position.x;
-            float gps_y = thisGPS.pose.pose.position.y;
-            float gps_z = thisGPS.pose.pose.position.z;
-            if (!useGpsElevation)
-            {
-                gps_z = transformTobeMapped[5];
-                noise_z = 0.01;
-            }
-
-            // GPS not properly initialized (0,0,0)
-            if (abs(gps_x) < 1e-6 && abs(gps_y) < 1e-6)
-                continue;
-
-            // Add GPS every a few meters
-            PointType curGPSPoint;
-            curGPSPoint.x = gps_x;
-            curGPSPoint.y = gps_y;
-            curGPSPoint.z = gps_z;
-            if (pointDistance(curGPSPoint, lastGPSPoint) < 5.0)
-                continue;
-            else
-                lastGPSPoint = curGPSPoint;
-
-            gtsam::Vector Vector3(3);
-            Vector3 << max(noise_x, 1.0f), max(noise_y, 1.0f), max(noise_z, 1.0f);
-            noiseModel::Diagonal::shared_ptr gps_noise = noiseModel::Diagonal::Variances(Vector3);
-            gtsam::GPSFactor gps_factor(cloudKeyPoses3D->size(), gtsam::Point3(gps_x, gps_y, gps_z), gps_noise);
-            gtSAMgraph.add(gps_factor);
-
-            aLoopIsClosed = true;
-            break;
+            gps_z = transformTobeMapped[5];
+            noise_z = 0.01f;
         }
+
+        // Ignore uninitialized GPS
+        if (std::abs(gps_x) < 1e-6 && std::abs(gps_y) < 1e-6)
+            continue;
+
+        // Add GPS factor only if moved enough
+        PointType curGPSPoint{gps_x, gps_y, gps_z};
+        if (pointDistance(curGPSPoint, lastGPSPoint) < 5.0)
+            continue;
+        lastGPSPoint = curGPSPoint;
+
+        gtsam::Vector Vector3(3);
+        Vector3 << std::max(noise_x, 1.0f), std::max(noise_y, 1.0f), std::max(noise_z, 1.0f);
+        noiseModel::Diagonal::shared_ptr gps_noise = noiseModel::Diagonal::Variances(Vector3);
+        gtSAMgraph.add(gtsam::GPSFactor(cloudKeyPoses3D->size(), gtsam::Point3(gps_x, gps_y, gps_z), gps_noise));
+
+        aLoopIsClosed = true;
+        break; // Only add one GPS factor per frame
     }
 }
 

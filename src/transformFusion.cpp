@@ -59,7 +59,7 @@ void TransformFusion::imuOdometryHandler(const nav_msgs::msg::Odometry::SharedPt
     Eigen::Isometry3d imuOdomIsometryBack = odom2isometry(imuOdomQueue.back());
     Eigen::Isometry3d imuOdomIsometryIncre = imuOdomIsometryFront.inverse() * imuOdomIsometryBack;
     Eigen::Isometry3d imuOdomIsometryLast = lidarOdomIsometry * imuOdomIsometryIncre;
-    auto t = tf2::eigenToTransform(imuOdomIsometryLast);
+    geometry_msgs::msg::TransformStamped t = tf2::eigenToTransform(imuOdomIsometryLast);
     tf2::Stamped<tf2::Transform> tCur;
     tf2::convert(t, tCur);
 
