@@ -148,6 +148,8 @@ public:
 
     void cloudExtraction();
 
+    void interp(int& idn, const float& x_value, const float& min_x, const float& max_x, const float& max_idn);
+
     void publishClouds();
 };
 

@@ -125,9 +125,11 @@ bool ImageProjection::cachePointCloud(const sensor_msgs::msg::PointCloud2::Share
     // convert cloud
     currentCloudMsg = std::move(cloudQueue.front());
     cloudQueue.pop_front();
-    if (sensor == SensorType::VELODYNE || sensor == SensorType::LIVOX)
+    if (sensor == SensorType::VELODYNE ||
+        sensor == SensorType::LIVOX ||
+        sensor == SensorType::LIVOX_MID360)
     {
-        pcl::moveFromROSMsg(currentCloudMsg, *laserCloudIn);  
+        pcl::moveFromROSMsg(currentCloudMsg, *laserCloudIn);
     }
     else if (sensor == SensorType::OUSTER)
     {
@@ -181,7 +183,7 @@ bool ImageProjection::cachePointCloud(const sensor_msgs::msg::PointCloud2::Share
         }
         if (ringFlag == -1)
         {
-            if (sensor == SensorType::VELODYNE) {
+            if (sensor == SensorType::VELODYNE || sensor == SensorType::LIVOX_MID360) {
                 ringFlag = 2;
             } else {
                 RCLCPP_ERROR(get_logger(), "Point cloud ring channel not available, please configure your point cloud data!");
@@ -416,24 +418,28 @@ void ImageProjection::projectPointCloud()
         if (range < lidarMinRange || range > lidarMaxRange)
             continue;
         int rowIdn = laserCloudIn->points[i].ring;
-        // if sensor is a velodyne (ringFlag = 2) calculate rowIdn based on number of scans
-        if (ringFlag == 2) { 
+        // if sensor does not have ring information (ringFlag = 2) calculate rowIdn based on number of scans
+        if (ringFlag == 2)
+        {
             float verticalAngle =
-                atan2(thisPoint.z,
-                    sqrt(thisPoint.x * thisPoint.x + thisPoint.y * thisPoint.y)) *
-                180 / M_PI;
-            rowIdn = (verticalAngle + (N_SCAN - 1)) / 2.0;
+                atan2(thisPoint.z, sqrt(thisPoint.x * thisPoint.x + thisPoint.y * thisPoint.y)) *
+                180.0 / M_PI;
+            interp(rowIdn, verticalAngle, verticalAngleMin, verticalAngleMax, N_SCAN);
         }
         if (rowIdn < 0 || rowIdn >= N_SCAN)
+        {
+            RCLCPP_WARN(get_logger(), "Out of range... rowIdn: %d", rowIdn);
             continue;
+        }
         if (rowIdn % downsampleRate != 0)
             continue;
         int columnIdn = -1;
-        if (sensor == SensorType::VELODYNE || sensor == SensorType::OUSTER)
+        if (sensor == SensorType::VELODYNE ||
+            sensor == SensorType::OUSTER ||
+            sensor == SensorType::LIVOX_MID360)
         {
-            float horizonAngle = atan2(thisPoint.x, thisPoint.y) * 180 / M_PI;
-            static float ang_res_x = 360.0/float(Horizon_SCAN);
-            columnIdn = -round((horizonAngle-90.0)/ang_res_x) + Horizon_SCAN/2;
+            float horizonAngle = atan2(thisPoint.x, thisPoint.y) * 180.0 / M_PI;
+            interp(columnIdn, horizonAngle, horizontalAngleMin, horizontalAngleMax, Horizon_SCAN);
             if (columnIdn >= Horizon_SCAN)
                 columnIdn -= Horizon_SCAN;
         }
@@ -444,7 +450,10 @@ void ImageProjection::projectPointCloud()
         }
 
         if (columnIdn < 0 || columnIdn >= Horizon_SCAN)
+        {
+            RCLCPP_WARN(get_logger(), "Out of range... columnIdn: %d", columnIdn);
             continue;
+        }
 
         if (rangeMat.at<float>(rowIdn, columnIdn) != FLT_MAX)
             continue;
@@ -454,6 +463,14 @@ void ImageProjection::projectPointCloud()
         int index = columnIdn + rowIdn * Horizon_SCAN;
         fullCloud->points[index] = thisPoint;
     }
+}
+
+void ImageProjection::interp(
+    int& idn, const float& x_value, const float& min_x, const float& max_x, const float& max_idn)
+{
+    float m = float(max_idn - 1) / (max_x - min_x);
+    float q = float(max_idn - 1) / (1 - (max_x / min_x));
+    idn = int(x_value * m + q);
 }
 
 void ImageProjection::cloudExtraction()

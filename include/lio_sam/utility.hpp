@@ -62,7 +62,7 @@ using namespace std;
 
 typedef pcl::PointXYZI PointType;
 
-enum class SensorType { VELODYNE, OUSTER, LIVOX };
+enum class SensorType { VELODYNE, OUSTER, LIVOX, LIVOX_MID360 };
 
 class ParamServer : public rclcpp::Node
 {
@@ -93,12 +93,16 @@ public:
     string savePCDDirectory;
 
     // Lidar Sensor Configuration
-    SensorType sensor = SensorType::OUSTER;
+    SensorType sensor = SensorType::LIVOX_MID360;
     int N_SCAN;
     int Horizon_SCAN;
     int downsampleRate;
     float lidarMinRange;
     float lidarMaxRange;
+    float verticalAngleMin;
+    float verticalAngleMax;
+    float horizontalAngleMin;
+    float horizontalAngleMax;
 
     // IMU
     float imuAccNoise;
@@ -208,11 +212,15 @@ public:
         {
             sensor = SensorType::LIVOX;
         }
+        else if (sensorStr == "livox_mid360")
+        {
+            sensor = SensorType::LIVOX_MID360;
+        }
         else
         {
             RCLCPP_ERROR_STREAM(
                 get_logger(),
-                "Invalid sensor type (must be either 'velodyne' or 'ouster' or 'livox'): " << sensorStr);
+                "Invalid sensor type (must be either 'velodyne' or 'ouster' or 'livox' or 'livox_mid360'): " << sensorStr);
             rclcpp::shutdown();
         }
 
@@ -226,6 +234,15 @@ public:
         get_parameter("lidarMinRange", lidarMinRange);
         declare_parameter("lidarMaxRange", 1000.0);
         get_parameter("lidarMaxRange", lidarMaxRange);
+
+        declare_parameter("verticalAngleMin", -10.0);
+        get_parameter("verticalAngleMin", verticalAngleMin);
+        declare_parameter("verticalAngleMax", 90.0);
+        get_parameter("verticalAngleMax", verticalAngleMax);
+        declare_parameter("horizontalAngleMin", 0.0);
+        get_parameter("horizontalAngleMin", horizontalAngleMin);
+        declare_parameter("horizontalAngleMax", 360.0);
+        get_parameter("horizontalAngleMax", horizontalAngleMax);
 
         declare_parameter("imuAccNoise", 9e-4);
         get_parameter("imuAccNoise", imuAccNoise);

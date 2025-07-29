@@ -1217,6 +1217,7 @@ bool mapOptimization::saveFrame()
     if (cloudKeyPoses3D->points.empty())
         return true;
 
+    // NOTE(ed): why livox frame are added "time-based"???
     if (sensor == SensorType::LIVOX)
     {
         if (timeLaserInfoCur - cloudKeyPoses6D->back().time > 1.0)
